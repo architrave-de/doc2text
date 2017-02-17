@@ -14,9 +14,8 @@ IMAGE_MIMETYPES = [
 PDF_MIMETYPE = 'application/pdf'
 
 
-FileNotAcceptedException = Exception(
-    'The filetype is not acceptable. We accept bmp, png, tiff, jpg, jpeg, jpeg2000, and PDF.'
-)
+class FileNotAcceptedException(Exception):
+    message = 'File type unsupported. Only images (bitmaps, PNG, JPEG) and PDF'
 
 
 class Document(object):
@@ -51,7 +50,7 @@ class Document(object):
         elif mime_type in IMAGE_MIMETYPES:
             return ImageDocument(path)
         else:
-            raise FileNotAcceptedException
+            raise FileNotAcceptedException()
 
 
 class ImageDocument(Document):
