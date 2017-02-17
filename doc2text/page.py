@@ -1,5 +1,7 @@
 import os
 import logging
+import tempfile
+import datetime
 
 import cv2
 import numpy as np
@@ -8,26 +10,33 @@ from scipy.ndimage.filters import rank_filter
 from PIL import Image
 
 
-def get_image(fd):
+def get_cv_image_from_file(fd):
     image_array = np.asarray(bytearray(fd.read()), dtype=np.uint8)
     return cv2.imdecode(image_array, 0)
 
 
+def get_temp_filename(extension):
+    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
+    prefix = 'doc2text_{}_'.format(timestamp)
+    temp_file = tempfile.NamedTemporaryFile(prefix=prefix)
+    return '{}.{}'.format(temp_file.name, extension)
+
+
 class Page(object):
     def __init__(self, file_descriptor):
-        self.original = get_image(file_descriptor)
+        self.original = get_cv_image_from_file(file_descriptor)
         self._processed = None
 
     def extract_text(self, lang):
-        temp_path = 'text_temp.png'
-        cv2.imwrite(temp_path, self.processed)
+        temp_filename = get_temp_filename('png')
+        cv2.imwrite(temp_filename, self.processed)
         try:
-            return pytesseract.image_to_string(Image.open(temp_path), lang=lang)
+            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang)
         except TypeError:
             # TODO: tesseract is throwing a TypeError on python 3 code (bad string handling)
             logging.error('Tesseract error when calling tesseract')
         finally:
-            os.remove(temp_path)
+            os.remove(temp_filename)
 
     @property
     def processed(self):
