@@ -238,7 +238,7 @@ def rotate(image, theta):
 
 def estimate_skew(image):
     edges = auto_canny(image)
-    lines = cv2.HoughLines(edges, 1, np.pi / 90, 200)
+    lines = cv2.HoughLines(edges, 1, np.pi / 90, 200) or []
     new = edges.copy()
 
     thetas = []
