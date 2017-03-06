@@ -8,7 +8,7 @@ window, run `mkvirtualenv -p python3.5 doc2text`
 1. Activate the environment with `workon doc2text`
     
 1. Install doc2text: `pip install
-    git+ssh://git@github.com:architrave-de/doc2text.git`
+    git+ssh://git@github.com/architrave-de/doc2text.git`
 
 
 ### Running the command line tool.
