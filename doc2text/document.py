@@ -28,6 +28,7 @@ class Document(object):
     def __init__(self, path):
         self.prepared = False
         self.path = path
+        self._pages = []
 
     def _convert(self, source_fd, destination_fd):
         with Image(file=source_fd, resolution=self.CONVERSION_RESOLUTION) as image:
@@ -41,6 +42,10 @@ class Document(object):
     def prepare(self):
         self._preprocess()
         self.prepared = True
+
+    @property
+    def pages(self):
+        return self._pages
 
     @staticmethod
     def get_by_path(path):
@@ -58,6 +63,10 @@ class ImageDocument(Document):
         super(ImageDocument, self).__init__(path)
         self._page = None
 
+    @property
+    def pages(self):
+        return [self._page] if self._page else []
+
     def get_text(self, language):
         if not self.prepared:
             self.prepare()
@@ -72,25 +81,22 @@ class ImageDocument(Document):
 
 
 class PDFDocument(Document):
-    def __init__(self, path):
-        super(PDFDocument, self).__init__(path)
-        self.pages = []
-
     def get_text(self, language):
         if not self.prepared:
             self.prepare()
-        return '\f'.join([(p.extract_text(language) or ' ') for p in self.pages])
+        return '\f'.join([(p.extract_text(language) or ' ') for p in self._pages])
 
     def _preprocess(self):
-        pdf_reader = pyPdf.PdfFileReader(open(self.path, 'rb'))
-        for i in range(pdf_reader.numPages):
-            output = pyPdf.PdfFileWriter()
-            output.addPage(pdf_reader.getPage(i))
-            pdf_page_buffer = BytesIO()
-            image_buffer = BytesIO()
-            output.write(pdf_page_buffer)
-            pdf_page_buffer.seek(0)
-            self._convert(pdf_page_buffer, image_buffer)
+        with open(self.path, 'rb') as pdf_file:
+            pdf_reader = pyPdf.PdfFileReader(pdf_file)
+            for i in range(pdf_reader.numPages):
+                output = pyPdf.PdfFileWriter()
+                output.addPage(pdf_reader.getPage(i))
+                pdf_page_buffer = BytesIO()
+                image_buffer = BytesIO()
+                output.write(pdf_page_buffer)
+                pdf_page_buffer.seek(0)
+                self._convert(pdf_page_buffer, image_buffer)
 
-            image_buffer.seek(0)
-            self.pages.append(Page(image_buffer))
+                image_buffer.seek(0)
+                self._pages.append(Page(image_buffer))
