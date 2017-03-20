@@ -195,10 +195,13 @@ def rotate(image, theta):
 
 def estimate_skew(image):
     edges = auto_canny(image)
-    lines = cv2.HoughLines(edges, 1, np.pi / 90, 200) or []
+    lines = cv2.HoughLines(edges, 1, np.pi / 90, 200)
     new = edges.copy()
 
     thetas = []
+
+    if lines is None:
+        return None
 
     for line in lines:
         for rho, theta in line:
@@ -229,7 +232,11 @@ def compute_skew(theta):
 
 
 def process_skew(image):
-    theta = compute_skew(estimate_skew(image))
+    estimated_skew = estimate_skew(image)
+    if not estimated_skew:
+        return image
+
+    theta = compute_skew(estimated_skew)
     ret, thresh = cv2.threshold(image.copy(), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     rotated = rotate(thresh, theta)
     return rotated

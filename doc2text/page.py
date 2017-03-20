@@ -32,9 +32,10 @@ class Page(object):
         temp_filename = get_temp_filename('png')
         cv2.imwrite(temp_filename, self.processed)
         try:
-            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang)
+            # pytesseract requires that language is passed as 3-letter code, lowercased.
+            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang.lower())
         except TypeError:
-            # TODO: tesseract is throwing a TypeError on python 3 code (bad string handling)
+            # buggy pytesseract throws a TypeError when handling error messages from itself.
             logging.error('Tesseract error when calling tesseract')
         finally:
             os.remove(temp_filename)
