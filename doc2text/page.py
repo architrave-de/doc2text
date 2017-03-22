@@ -2,7 +2,6 @@ import os
 import logging
 import tempfile
 import datetime
-from io import StringIO
 
 import cv2
 import numpy as np
