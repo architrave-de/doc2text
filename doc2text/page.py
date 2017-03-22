@@ -28,12 +28,13 @@ class Page(object):
         self.original = get_cv_image_from_file(file_descriptor)
         self._processed = None
 
-    def extract_text(self, lang):
+    def extract_text(self, lang, auto_rotate=False):
+        config = "-psm 0" if auto_rotate else None
         temp_filename = get_temp_filename('png')
         cv2.imwrite(temp_filename, self.processed)
         try:
             # pytesseract requires that language is passed as 3-letter code, lowercased.
-            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang.lower())
+            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang.lower(), config=config)
         except TypeError:
             # buggy pytesseract throws a TypeError when handling error messages from itself.
             logging.error('Tesseract error when calling tesseract')

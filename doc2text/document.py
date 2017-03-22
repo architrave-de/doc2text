@@ -1,3 +1,4 @@
+import re
 import mimetypes
 from io import BytesIO
 
@@ -67,10 +68,10 @@ class ImageDocument(Document):
     def pages(self):
         return [self._page] if self._page else []
 
-    def get_text(self, language):
+    def get_text(self, language, auto_rotate=False):
         if not self.prepared:
             self.prepare()
-        return self._page.extract_text(language)
+        return self._page.extract_text(language, auto_rotate=auto_rotate)
 
     def _preprocess(self):
         out_buffer = BytesIO()
@@ -81,10 +82,10 @@ class ImageDocument(Document):
 
 
 class PDFDocument(Document):
-    def get_text(self, language):
+    def get_text(self, language, auto_rotate=False):
         if not self.prepared:
             self.prepare()
-        return '\f'.join([(p.extract_text(language) or ' ') for p in self._pages])
+        return '\f'.join([(p.extract_text(language, auto_rotate=auto_rotate) or ' ') for p in self._pages])
 
     def _preprocess(self):
         with open(self.path, 'rb') as pdf_file:
