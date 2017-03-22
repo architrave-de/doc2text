@@ -39,7 +39,6 @@ class Page(object):
         for line in open(outfile+".osd","r").readlines():
             if "Rotate:" in line:
                 theta = float(line.split(" ")[1])
-        print(theta)
         return transformations.rotate(self.original, theta)
 
 
