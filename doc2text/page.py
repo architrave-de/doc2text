@@ -1,11 +1,7 @@
-import os
-import logging
-import tempfile
-import datetime
+import pyocr
 
 import cv2
 import numpy as np
-import pytesseract
 from PIL import Image
 
 from . import transformations
@@ -16,43 +12,32 @@ def get_cv_image_from_file(fd):
     return cv2.imdecode(image_array, 0)
 
 
-def get_temp_filename(extension):
-    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
-    prefix = '{}_{}_'.format(__name__, timestamp)
-    temp_file = tempfile.NamedTemporaryFile(prefix=prefix)
-    return '{}.{}'.format(temp_file.name, extension)
+def cv_to_pil(cv_im):
+    return Image.fromarray(cv_im)
 
 
 class Page(object):
     def __init__(self, file_descriptor):
         self.original = get_cv_image_from_file(file_descriptor)
+        self.pyocr_tool = pyocr.get_available_tools()[0]
         self._processed = None
 
     def maybe_rotate(self):
-        infile = get_temp_filename("png")
-        outfile = get_temp_filename("")
-        cv2.imwrite(infile, self.original)
-
-        pytesseract.pytesseract.run_tesseract(infile, outfile, config="-psm 0")
-
-        theta = 0.
-        for line in open(outfile+".osd","r").readlines():
-            if "Rotate:" in line:
-                theta = float(line.split(" ")[1])
+        image = cv_to_pil(self.original)
+        try:
+            rotation_degree = self.pyocr_tool.detect_orientation(image, lang='deu')['angle']
+        except:
+            rotation_degree = 0.
+        theta = rotation_degree
         return transformations.rotate(self.original, theta)
 
-
     def extract_text(self, lang):
-        temp_filename = get_temp_filename('png')
-        cv2.imwrite(temp_filename, self.processed)
+        image = cv_to_pil(self.processed)
         try:
-            # pytesseract requires that language is passed as 3-letter code, lowercased.
-            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang.lower())
-        except TypeError:
-            # buggy pytesseract throws a TypeError when handling error messages from itself.
-            logging.error('Tesseract error when calling tesseract')
-        finally:
-            os.remove(temp_filename)
+            text = self.pyocr_tool.image_to_string(image, lang=lang)
+        except:
+            text = None
+        return text
 
     @property
     def processed(self):
