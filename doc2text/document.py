@@ -90,13 +90,15 @@ class PDFDocument(Document):
         with open(self.path, 'rb') as pdf_file:
             pdf_reader = pyPdf.PdfFileReader(pdf_file)
             for i in range(pdf_reader.numPages):
-                output = pyPdf.PdfFileWriter()
-                output.addPage(pdf_reader.getPage(i))
-                pdf_page_buffer = BytesIO()
-                image_buffer = BytesIO()
-                output.write(pdf_page_buffer)
-                pdf_page_buffer.seek(0)
-                self._convert(pdf_page_buffer, image_buffer)
-
-                image_buffer.seek(0)
-                self._pages.append(Page(image_buffer))
+                try:
+                    output = pyPdf.PdfFileWriter()
+                    output.addPage(pdf_reader.getPage(i))
+                    pdf_page_buffer = BytesIO()
+                    image_buffer = BytesIO()
+                    output.write(pdf_page_buffer)
+                    pdf_page_buffer.seek(0)
+                    self._convert(pdf_page_buffer, image_buffer)
+                    image_buffer.seek(0)
+                    self._pages.append(Page(image_buffer))
+                except:
+                    continue

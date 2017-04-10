@@ -1,4 +1,5 @@
 import pyocr
+import io
 
 import cv2
 import numpy as np
@@ -8,9 +9,11 @@ from . import transformations
 
 
 def get_cv_image_from_file(fd):
-    image_array = np.asarray(bytearray(fd.read()), dtype=np.uint8)
-    return cv2.imdecode(image_array, 0)
-
+    try:
+        image_array = np.asarray(bytearray(fd.read()), dtype=np.uint8)
+        return cv2.imdecode(image_array, 0)
+    except:
+        return Image.open(io.BytesIO(bytearray(fd.read())))
 
 def cv_to_pil(cv_im):
     return Image.fromarray(cv_im)
@@ -42,7 +45,10 @@ class Page(object):
     @property
     def processed(self):
         if not self._processed:
-            rotated_image = self.maybe_rotate()
-            cropped_image = transformations.process_image(rotated_image)
-            self._processed = transformations.process_skew(cropped_image)
-        return self._processed
+            try:
+                rotated_image = self.maybe_rotate()
+                cropped_image = transformations.process_image(rotated_image)
+                self._processed = transformations.process_skew(cropped_image)
+                return self._processed
+            except:
+                return self.original
