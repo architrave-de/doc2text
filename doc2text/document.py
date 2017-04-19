@@ -25,9 +25,10 @@ class Document(object):
     def get_text(self, language):
         raise NotImplementedError()
 
-    def __init__(self, path):
+    def __init__(self, path, language=None):
         self.prepared = False
         self.path = path
+        self.language = language
         self._pages = []
 
     def _convert(self, source_fd, destination_fd):
@@ -48,57 +49,55 @@ class Document(object):
         return self._pages
 
     @staticmethod
-    def get_by_path(path):
+    def get_by_path(path, language=None):
         mime_type, _ = mimetypes.guess_type(path)
         if mime_type == PDF_MIMETYPE:
-            return PDFDocument(path)
+            return PDFDocument(path, language=language)
         elif mime_type in IMAGE_MIMETYPES:
-            return ImageDocument(path)
+            return ImageDocument(path, language=language)
         else:
             raise FileNotAcceptedException()
 
 
 class ImageDocument(Document):
-    def __init__(self, path):
-        super(ImageDocument, self).__init__(path)
+    def __init__(self, path, language=None):
+        super(ImageDocument, self).__init__(path, language=language)
         self._page = None
 
     @property
     def pages(self):
         return [self._page] if self._page else []
 
-    def get_text(self, language):
+    def get_text(self, language=None):
         if not self.prepared:
             self.prepare()
-        return self._page.extract_text(language)
+        return self._page.extract_text(language=language)
 
     def _preprocess(self):
         out_buffer = BytesIO()
         with open(self.path, 'rb') as f:
             self._convert(f, out_buffer)
             out_buffer.seek(0)
-            self._page = Page(out_buffer)
+            self._page = Page(out_buffer, language=self.language)
 
 
 class PDFDocument(Document):
-    def get_text(self, language):
+    def get_text(self, language=None):
+        lang = language or self.language
         if not self.prepared:
             self.prepare()
-        return '\f'.join([(p.extract_text(language) or ' ') for p in self._pages])
+        return '\f'.join([(p.extract_text(language=lang) or '') for p in self._pages])
 
     def _preprocess(self):
         with open(self.path, 'rb') as pdf_file:
             pdf_reader = pyPdf.PdfFileReader(pdf_file)
             for i in range(pdf_reader.numPages):
-                try:
-                    output = pyPdf.PdfFileWriter()
-                    output.addPage(pdf_reader.getPage(i))
-                    pdf_page_buffer = BytesIO()
-                    image_buffer = BytesIO()
-                    output.write(pdf_page_buffer)
-                    pdf_page_buffer.seek(0)
-                    self._convert(pdf_page_buffer, image_buffer)
-                    image_buffer.seek(0)
-                    self._pages.append(Page(image_buffer))
-                except:
-                    continue
+                output = pyPdf.PdfFileWriter()
+                output.addPage(pdf_reader.getPage(i))
+                pdf_page_buffer = BytesIO()
+                image_buffer = BytesIO()
+                output.write(pdf_page_buffer)
+                pdf_page_buffer.seek(0)
+                self._convert(pdf_page_buffer, image_buffer)
+                image_buffer.seek(0)
+                self._pages.append(Page(image_buffer, language=self.language))

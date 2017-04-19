@@ -185,12 +185,16 @@ def rad_to_deg(theta):
 
 
 def rotate(image, theta):
-    (h, w) = image.shape[:2]
+    _, threshold = cv2.threshold(image.copy(), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    (h, w) = threshold.shape[:2]
     center = (w / 2, h / 2)
     M = cv2.getRotationMatrix2D(center, theta, 1)
-    rotated = cv2.warpAffine(image, M, (int(w), int(h)), cv2.INTER_LINEAR,
-                             borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
-    return rotated
+    border_mode = cv2.BORDER_CONSTANT
+    border_value = (255, 255, 255)
+    return cv2.warpAffine(
+        threshold, M, (int(w), int(h)), cv2.INTER_LINEAR,
+        borderMode=border_mode, borderValue=border_value
+    )
 
 
 def estimate_skew(image):
@@ -200,8 +204,8 @@ def estimate_skew(image):
 
     thetas = []
 
-    if lines is None:
-        return None
+    if lines is None or len(lines) == 0:
+        return 0
 
     for line in lines:
         for rho, theta in line:
@@ -223,20 +227,7 @@ def estimate_skew(image):
     return theta
 
 
-def compute_skew(theta):
-    # We assume a perfectly aligned page has lines at theta = 90 deg
-    diff = 90 - theta
-
-    # We want to reverse the difference.
-    return -diff
-
-
-def process_skew(image):
+def deskew(image):
+    # We assume a perfectly aligned page has lines at a right angle (90 degrees)
     estimated_skew = estimate_skew(image)
-    if not estimated_skew:
-        return image
-
-    theta = compute_skew(estimated_skew)
-    ret, thresh = cv2.threshold(image.copy(), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    rotated = rotate(thresh, theta)
-    return rotated
+    return image if not estimated_skew else rotate(image, estimated_skew - 90)

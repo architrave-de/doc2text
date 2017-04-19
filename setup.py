@@ -64,7 +64,7 @@ setup(
         'opencv-python',
         'pypdf2',
         'pillow',
-        'pytesseract',
+        'pyocr',
         'scipy',
         'mime',
         'wand',
