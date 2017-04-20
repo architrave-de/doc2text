@@ -1,48 +1,37 @@
-import os
-import logging
-import tempfile
-import datetime
+import pyocr
 
 import cv2
 import numpy as np
-import pytesseract
 from PIL import Image
 
 from . import transformations
 
 
-def get_cv_image_from_file(fd):
+def get_image_from_file(fd):
     image_array = np.asarray(bytearray(fd.read()), dtype=np.uint8)
     return cv2.imdecode(image_array, 0)
 
 
-def get_temp_filename(extension):
-    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
-    prefix = '{}_{}_'.format(__name__, timestamp)
-    temp_file = tempfile.NamedTemporaryFile(prefix=prefix)
-    return '{}.{}'.format(temp_file.name, extension)
-
-
 class Page(object):
-    def __init__(self, file_descriptor):
-        self.original = get_cv_image_from_file(file_descriptor)
+    def __init__(self, file_descriptor, language=None):
+        self.original = get_image_from_file(file_descriptor)
+        self.language = language
+        self.pyocr_tool = pyocr.get_available_tools()[0]
         self._processed = None
 
-    def extract_text(self, lang):
-        temp_filename = get_temp_filename('png')
-        cv2.imwrite(temp_filename, self.processed)
-        try:
-            # pytesseract requires that language is passed as 3-letter code, lowercased.
-            return pytesseract.image_to_string(Image.open(temp_filename), lang=lang.lower())
-        except TypeError:
-            # buggy pytesseract throws a TypeError when handling error messages from itself.
-            logging.error('Tesseract error when calling tesseract')
-        finally:
-            os.remove(temp_filename)
+    def extract_text(self, language=None):
+        image = Image.fromarray(self.processed)
+        return self.pyocr_tool.image_to_string(image, lang=language or self.language)
+
+    @property
+    def original_orientation(self):
+        image = Image.fromarray(self.original)
+        return self.pyocr_tool.detect_orientation(image, lang=self.language)['angle']
 
     @property
     def processed(self):
         if not self._processed:
-            cropped_image = transformations.process_image(self.original)
-            self._processed = transformations.process_skew(cropped_image)
-        return self._processed
+            rotated_image = transformations.rotate(self.original, self.original_orientation)
+            cropped_image = transformations.process_image(rotated_image)
+            self._processed = transformations.deskew(cropped_image)
+            return self._processed
